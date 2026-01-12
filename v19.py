@@ -2,7 +2,6 @@ import yfinance as yf
 import pandas as pd
 import pandas_ta as ta
 import warnings
-import os
 from datetime import datetime
 
 warnings.filterwarnings("ignore")
@@ -47,12 +46,7 @@ def ejecutar_analisis():
                 p_actual = df['Close'].iloc[-1]
                 rsi_val = df['RSI'].iloc[-1]
                 ma20 = df['MA20'].iloc[-1]
-                atr = df['ATR'].iloc[-1]
                 ema200 = df['EMA200'].iloc[-1]
-                
-                tp = ma20
-                sl = p_actual - (2 * atr)
-                ratio = (tp - p_actual) / (p_actual - sl) if (p_actual - sl) > 0 else 0
                 
                 if rsi_val < 35 and p_actual > ema200: estado = "GOLDEN 💎"
                 elif rsi_val < 35: estado = "ATENCION 🐻"
@@ -64,12 +58,11 @@ def ejecutar_analisis():
                     "Ticker": ticker,
                     "Precio": round(float(p_actual), 2),
                     "RSI": round(float(rsi_val), 2),
-                    "Ratio": round(float(ratio), 2),
                     "Tendencia": "BULL 🐂" if p_actual > ema200 else "BEAR 🐻",
                     "Estado": estado
                 })
             except: continue
         return resultados
 
-    todo_junto = procesar_mercado(cedears_usa, "USA/CEDEAR") + procesar_mercado(activos_arg, "ARG_LOCAL")
-    return pd.DataFrame(todo_junto)
+    final = procesar_mercado(cedears_usa, "USA/CEDEAR") + procesar_mercado(activos_arg, "ARG_LOCAL")
+    return pd.DataFrame(final)
