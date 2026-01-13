@@ -7,7 +7,6 @@ from datetime import datetime
 warnings.filterwarnings("ignore")
 
 def ejecutar_analisis():
-    # Listas de activos
     cedears_usa = [
         "MMM", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AMZN", "AAPL", "BA", "BABA", "BBD", "BCS", "BHP", "BIDU", 
         "BIIB", "BP", "BRK-B", "BSBR", "C", "CAT", "CHTR", "CL", "COST", "CRM", "CSCO", "CVS", "CVX", "DD", "DE", 
@@ -31,22 +30,27 @@ def ejecutar_analisis():
         "PATR.BA", "PGR.BA", "RIGO.BA", "ROSE.BA", "SAMI.BA", "SEMI.BA", "VIST.BA", "RICH.BA"
     ]
 
+    dic_sectores = {
+        "Technology": "Tecnología", "Financial Services": "Finanzas", "Consumer Cyclical": "Consumo",
+        "Industrials": "Industria", "Healthcare": "Salud", "Communication Services": "Comunicación",
+        "Energy": "Energía", "Consumer Defensive": "Consumo Básico", "Utilities": "Servicios Públicos",
+        "Real Estate": "Inmuebles", "Basic Materials": "Materia Prima"
+    }
+
     def procesar_mercado(tickers, etiqueta_mercado):
         resultados = []
         for ticker in tickers:
             try:
-                # Descargamos datos históricos
                 df = yf.download(ticker, period="2y", interval="1d", progress=False, auto_adjust=True)
                 if df.empty or len(df) < 50: continue
                 
-                # Obtenemos info de la empresa (Nombre y Rubro)
                 info = yf.Ticker(ticker).info
                 nombre = info.get('longName', ticker)
-                sector = info.get('sector', 'N/A')
+                sector_raw = info.get('sector', 'N/A')
+                sector = dic_sectores.get(sector_raw, sector_raw)
                 
                 if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-                # --- INDICADORES ---
                 df['RSI'] = ta.rsi(df['Close'], length=14)
                 df['MA20'] = ta.sma(df['Close'], length=20)
                 df['EMA200'] = ta.ema(df['Close'], length=200)
@@ -58,9 +62,13 @@ def ejecutar_analisis():
                 ema200 = df['EMA200'].iloc[-1]
                 atr_val = df['ATR'].iloc[-1]
                 
-                # --- CÁLCULOS DE TRADING ---
-                take_profit = ma20  # Objetivo a la media móvil de 20
-                stop_loss = p_actual - (2 * atr_val) # Stop Loss: 2 veces el ATR
+                tp = ma20
+                sl = p_actual - (2 * atr_val)
+                
+                # Cálculo del Ratio
+                beneficio = tp - p_actual
+                riesgo = p_actual - sl
+                ratio = beneficio / riesgo if riesgo > 0 else 0
                 
                 if rsi_val < 35 and p_actual > ema200: estado = "GOLDEN 💎"
                 elif rsi_val < 35: estado = "ATENCION 🐻"
@@ -75,13 +83,13 @@ def ejecutar_analisis():
                     "Precio": round(float(p_actual), 2),
                     "RSI": round(float(rsi_val), 2) if not pd.isna(rsi_val) else "N/A",
                     "ATR": round(float(atr_val), 2),
-                    "Take Profit": round(float(take_profit), 2),
-                    "Stop Loss": round(float(stop_loss), 2),
+                    "Take Profit": round(float(tp), 2),
+                    "Stop Loss": round(float(sl), 2),
+                    "Ratio R/B": round(float(ratio), 2),
                     "Tendencia": "BULL 🐂" if p_actual > ema200 else "BEAR 🐻",
                     "Estado": estado
                 })
-            except Exception as e:
-                continue
+            except: continue
         return resultados
 
     final = procesar_mercado(cedears_usa, "USA/CEDEAR") + procesar_mercado(activos_arg, "ARG_LOCAL")
