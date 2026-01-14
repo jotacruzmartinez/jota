@@ -4,60 +4,74 @@ import pandas as pd
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
-# Configuración visual
-st.set_page_config(page_title="Radar Golden", layout="wide")
-st.title("💰 Mis Oportunidades de Inversión")
+st.set_page_config(page_title="Radar Maestro Golden", layout="wide")
+st.title("💎 Radar de Inversiones Maestro")
 
-# LISTA COMPLETA DE 188 ACTIVOS
-TODOS = ["MMM", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AMZN", "AAPL", "BA", "BABA", "BBD", "BCS", "BHP", "BIDU", "BIIB", "BP", "BRK-B", "BSBR", "C", "CAT", "CHTR", "CL", "COST", "CRM", "CSCO", "CVS", "CVX", "DD", "DE", "DIS", "EBAY", "FDX", "GE", "GFI", "GILD", "GLD", "GOOGL", "GS", "HAL", "HD", "HMC", "HON", "HPQ", "HSBC", "IBM", "INTC", "ITUB", "JD", "JNJ", "JPM", "KO", "LLY", "LMT", "MA", "MCD", "MDT", "MELI", "MO", "MRK", "MSFT", "MSI", "MU", "NEM", "NFLX", "NKE", "NVDA", "ORCL", "PBR", "PEP", "PFE", "PG", "PYPL", "QCOM", "RTX", "SBUX", "SCHW", "SLB", "SNAP", "SONY", "SPY", "T", "TGT", "TM", "TSLA", "TSM", "TXN", "UAL", "UNH", "UNP", "V", "VALE", "VZ", "WFC", "WMT", "XOM", "ZM", "QQQ", "DIA", "EEM", "IWM", "XLF", "XLE", "XLU", "XLK", "XLV", "XLP", "XLI", "XLB", "XLC", "GDX", "EWZ", "ARKK", "BITO", "IREN", "RIOT", "MARA", "COIN", "MSTR", "PLTR", "AI", "U", "SNOW", "PATH", "SE", "SHOP", "SPOT", "UBER", "ABNB", "ALUA.BA", "BBAR.BA", "BMA.BA", "BYMA.BA", "CEPU.BA", "COME.BA", "CRES.BA", "EDN.BA", "GGAL.BA", "LOMA.BA", "MIRG.BA", "PAMP.BA", "SUPV.BA", "TECO2.BA", "TGNO4.BA", "TGSU2.BA", "TRAN.BA", "TXAR.BA", "VALO.BA", "YPFD.BA", "AGRO.BA", "AUSO.BA", "BHIP.BA", "BOLT.BA", "BPAT.BA", "CADO.BA", "CAPX.BA", "CARC.BA", "CECO2.BA", "CELU.BA", "CGPA2.BA", "CTIO.BA", "DGCU2.BA", "DOME.BA", "DYCA.BA", "FERR.BA", "FIPL.BA", "GAMI.BA", "GARO.BA", "GBAN.BA", "GCLA.BA", "GRIM.BA", "HAVA.BA", "INTR.BA", "INVJ.BA", "IRSA.BA", "LEDE.BA", "LONG.BA", "METR.BA", "MOLA.BA", "MOLI.BA", "MORI.BA", "OEST.BA", "PATA.BA", "PATR.BA", "PGR.BA", "RIGO.BA", "ROSE.BA", "SAMI.BA", "SEMI.BA", "VIST.BA", "RICH.BA"]
+# Listado de activos con etiqueta de mercado
+USA = ["MMM", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AMZN", "AAPL", "BA", "BABA", "BBD", "BCS", "BHP", "BIDU", "BIIB", "BP", "BRK-B", "BSBR", "C", "CAT", "CHTR", "CL", "COST", "CRM", "CSCO", "CVS", "CVX", "DD", "DE", "DIS", "EBAY", "FDX", "GE", "GFI", "GILD", "GLD", "GOOGL", "GS", "HAL", "HD", "HMC", "HON", "HPQ", "HSBC", "IBM", "INTC", "ITUB", "JD", "JNJ", "JPM", "KO", "LLY", "LMT", "MA", "MCD", "MDT", "MELI", "MO", "MRK", "MSFT", "MSI", "MU", "NEM", "NFLX", "NKE", "NVDA", "ORCL", "PBR", "PEP", "PFE", "PG", "PYPL", "QCOM", "RTX", "SBUX", "SCHW", "SLB", "SNAP", "SONY", "SPY", "T", "TGT", "TM", "TSLA", "TSM", "TXN", "UAL", "UNH", "UNP", "V", "VALE", "VZ", "WFC", "WMT", "XOM", "ZM", "QQQ", "DIA", "EEM", "IWM", "XLF", "XLE", "XLU", "XLK", "XLV", "XLP", "XLI", "XLB", "XLC", "GDX", "EWZ", "ARKK", "BITO", "IREN", "RIOT", "MARA", "COIN", "MSTR", "PLTR", "AI", "U", "SNOW", "PATH", "SE", "SHOP", "SPOT", "UBER", "ABNB"]
+ARG = ["ALUA.BA", "BBAR.BA", "BMA.BA", "BYMA.BA", "CEPU.BA", "COME.BA", "CRES.BA", "EDN.BA", "GGAL.BA", "LOMA.BA", "MIRG.BA", "PAMP.BA", "SUPV.BA", "TECO2.BA", "TGNO4.BA", "TGSU2.BA", "TRAN.BA", "TXAR.BA", "VALO.BA", "YPFD.BA", "AGRO.BA", "AUSO.BA", "BHIP.BA", "BOLT.BA", "BPAT.BA", "CADO.BA", "CAPX.BA", "CARC.BA", "CECO2.BA", "CELU.BA", "CGPA2.BA", "CTIO.BA", "DGCU2.BA", "DOME.BA", "DYCA.BA", "FERR.BA", "FIPL.BA", "GAMI.BA", "GARO.BA", "GBAN.BA", "GCLA.BA", "GRIM.BA", "HAVA.BA", "INTR.BA", "INVJ.BA", "IRSA.BA", "LEDE.BA", "LONG.BA", "METR.BA", "MOLA.BA", "MOLI.BA", "MORI.BA", "OEST.BA", "PATA.BA", "PATR.BA", "PGR.BA", "RIGO.BA", "ROSE.BA", "SAMI.BA", "SEMI.BA", "VIST.BA", "RICH.BA"]
 
 def analizar_activo(ticker):
     try:
-        data = yf.download(ticker, period="6mo", interval="1d", progress=False)
-        if data.empty or len(data) < 25: return None
+        mercado = "ARGENTINA 🇦🇷" if ticker.endswith(".BA") else "USA 🇺🇸"
+        t = yf.Ticker(ticker)
+        # Bajamos info para Nombre y Sector
+        info = t.info
+        nombre = info.get('shortName', ticker)
+        sector = info.get('sector', 'N/A')
         
-        # Extraer valores numéricos puros (Soluciona el error de la imagen 17cde5)
-        precio = float(data['Close'].iloc[-1].item())
-        sma20 = float(data['Close'].rolling(20).mean().iloc[-1].item())
+        hist = t.history(period="6mo")
+        if len(hist) < 25: return None
         
-        # RSI 14
-        delta = data['Close'].diff()
+        # Cálculos numéricos
+        cp = float(hist['Close'].iloc[-1])
+        sma20 = float(hist['Close'].rolling(20).mean().iloc[-1])
+        
+        # RSI
+        delta = hist['Close'].diff()
         gain = delta.where(delta > 0, 0).rolling(14).mean()
         loss = -delta.where(delta < 0, 0).rolling(14).mean()
-        rsi_val = 100 - (100 / (1 + (gain.iloc[-1].item() / loss.iloc[-1].item())))
+        rsi = 100 - (100 / (1 + (gain.iloc[-1] / loss.iloc[-1])))
         
-        # Stop Loss = ATR x 2
-        tr = pd.concat([data['High']-data['Low'], abs(data['High']-data['Close'].shift())], axis=1).max(axis=1)
-        atr = float(tr.rolling(14).mean().iloc[-1].item())
-        sl = precio - (atr * 2)
+        # ATR y Gestión de Riesgo
+        tr = pd.concat([hist['High']-hist['Low'], abs(hist['High']-hist['Close'].shift())], axis=1).max(axis=1)
+        atr = float(tr.rolling(14).mean().iloc[-1])
+        sl = cp - (atr * 2)
+        tp = cp + (atr * 3)
+        ratio = 3.0 # Definido por estrategia TP/SL
         
-        # Lógica de Estado
-        if precio > sma20 and 30 < rsi_val < 70:
-            estado = "GOLDEN 💎"
-        elif precio > sma20:
-            estado = "BULL 🐂"
+        # Tendencia y Recomendación
+        tendencia = "BULL 🐂" if cp > sma20 else ("BEAR 🐻" if cp < sma20 else "NEUTRAL 😐")
+        
+        if cp > sma20 and 30 < rsi < 70:
+            rec = "COMPRAR 💎"
+        elif cp > sma20 and rsi > 70:
+            rec = "MANTENER/SOBRECOMPRA ⚠️"
         else:
-            estado = "BEAR 🐻"
+            rec = "ESPERAR ⏳"
 
         return {
+            "Mercado": mercado,
             "Ticker": ticker,
-            "Precio": round(precio, 2),
-            "RSI": round(rsi_val, 2),
+            "Nombre": nombre,
+            "Sector": sector,
+            "Precio": round(cp, 2),
+            "RSI": round(rsi, 2),
+            "ATR": round(atr, 2),
             "Stop Loss": round(sl, 2),
-            "Estado": estado
+            "Take Profit": round(tp, 2),
+            "Ratio": ratio,
+            "Tendencia": tendencia,
+            "Recomendación": rec
         }
     except: return None
 
-if st.button('🚀 EJECUTAR ESCÁNER MAESTRO'):
-    with st.spinner('Analizando los 188 activos...'):
-        # Usamos procesamiento paralelo para que no tarde una eternidad
-        with ThreadPoolExecutor(max_workers=15) as executor:
-            resultados = list(executor.map(analizar_activo, TODOS))
+if st.button('🚀 EJECUTAR ANÁLISIS COMPLETO'):
+    with st.spinner('Analizando datos de mercado, sectores y gestión de riesgo...'):
+        todos = USA + ARG
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            resultados = list(executor.map(analizar_activo, todos))
         
         df = pd.DataFrame([r for r in resultados if r is not None])
-        if not df.empty:
-            st.success(f"¡Escaneo completo! Se analizaron {len(df)} activos.")
-            # Ordenamos para que los GOLDEN aparezcan primero
-            st.dataframe(df.sort_values("Estado", ascending=False), use_container_width=True)
-        else:
-            st.error("Error al obtener datos. Reintentá en unos segundos.")
+        st.success(f"Análisis finalizado para {len(df)} activos.")
+        st.dataframe(df, use_container_width=True)
