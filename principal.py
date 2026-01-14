@@ -2,39 +2,42 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import time
+from concurrent.futures import ThreadPoolExecutor
 
-st.set_page_config(page_title="Radar Maestro Golden", layout="wide")
+# Configuración visual
+st.set_page_config(page_title="Radar Golden", layout="wide")
 st.title("💰 Mis Oportunidades de Inversión")
 
-# Lista de activos reducida para prueba inicial rápida (luego podés expandirla)
-TODOS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "GGAL.BA", "YPFD.BA", "PAMP.BA", "ALUA.BA"]
+# LISTA COMPLETA DE 188 ACTIVOS
+TODOS = ["MMM", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AMZN", "AAPL", "BA", "BABA", "BBD", "BCS", "BHP", "BIDU", "BIIB", "BP", "BRK-B", "BSBR", "C", "CAT", "CHTR", "CL", "COST", "CRM", "CSCO", "CVS", "CVX", "DD", "DE", "DIS", "EBAY", "FDX", "GE", "GFI", "GILD", "GLD", "GOOGL", "GS", "HAL", "HD", "HMC", "HON", "HPQ", "HSBC", "IBM", "INTC", "ITUB", "JD", "JNJ", "JPM", "KO", "LLY", "LMT", "MA", "MCD", "MDT", "MELI", "MO", "MRK", "MSFT", "MSI", "MU", "NEM", "NFLX", "NKE", "NVDA", "ORCL", "PBR", "PEP", "PFE", "PG", "PYPL", "QCOM", "RTX", "SBUX", "SCHW", "SLB", "SNAP", "SONY", "SPY", "T", "TGT", "TM", "TSLA", "TSM", "TXN", "UAL", "UNH", "UNP", "V", "VALE", "VZ", "WFC", "WMT", "XOM", "ZM", "QQQ", "DIA", "EEM", "IWM", "XLF", "XLE", "XLU", "XLK", "XLV", "XLP", "XLI", "XLB", "XLC", "GDX", "EWZ", "ARKK", "BITO", "IREN", "RIOT", "MARA", "COIN", "MSTR", "PLTR", "AI", "U", "SNOW", "PATH", "SE", "SHOP", "SPOT", "UBER", "ABNB", "ALUA.BA", "BBAR.BA", "BMA.BA", "BYMA.BA", "CEPU.BA", "COME.BA", "CRES.BA", "EDN.BA", "GGAL.BA", "LOMA.BA", "MIRG.BA", "PAMP.BA", "SUPV.BA", "TECO2.BA", "TGNO4.BA", "TGSU2.BA", "TRAN.BA", "TXAR.BA", "VALO.BA", "YPFD.BA", "AGRO.BA", "AUSO.BA", "BHIP.BA", "BOLT.BA", "BPAT.BA", "CADO.BA", "CAPX.BA", "CARC.BA", "CECO2.BA", "CELU.BA", "CGPA2.BA", "CTIO.BA", "DGCU2.BA", "DOME.BA", "DYCA.BA", "FERR.BA", "FIPL.BA", "GAMI.BA", "GARO.BA", "GBAN.BA", "GCLA.BA", "GRIM.BA", "HAVA.BA", "INTR.BA", "INVJ.BA", "IRSA.BA", "LEDE.BA", "LONG.BA", "METR.BA", "MOLA.BA", "MOLI.BA", "MORI.BA", "OEST.BA", "PATA.BA", "PATR.BA", "PGR.BA", "RIGO.BA", "ROSE.BA", "SAMI.BA", "SEMI.BA", "VIST.BA", "RICH.BA"]
 
 def analizar_activo(ticker):
     try:
-        # Añadimos una pequeña pausa para no saturar el servidor
-        time.sleep(0.1) 
-        data = yf.download(ticker, period="1mo", interval="1d", progress=False)
+        data = yf.download(ticker, period="6mo", interval="1d", progress=False)
+        if data.empty or len(data) < 25: return None
         
-        if data.empty or len(data) < 10:
-            return None
-        
-        # Usamos .iloc[-1] con .item() para extraer solo el valor numérico puro
+        # Extraer valores numéricos puros (Soluciona el error de la imagen 17cde5)
         precio = float(data['Close'].iloc[-1].item())
         sma20 = float(data['Close'].rolling(20).mean().iloc[-1].item())
         
-        # RSI 14 simplificado y limpio
+        # RSI 14
         delta = data['Close'].diff()
         gain = delta.where(delta > 0, 0).rolling(14).mean()
         loss = -delta.where(delta < 0, 0).rolling(14).mean()
         rsi_val = 100 - (100 / (1 + (gain.iloc[-1].item() / loss.iloc[-1].item())))
         
-        # ATR y Stop Loss (ATR x 2)
+        # Stop Loss = ATR x 2
         tr = pd.concat([data['High']-data['Low'], abs(data['High']-data['Close'].shift())], axis=1).max(axis=1)
         atr = float(tr.rolling(14).mean().iloc[-1].item())
         sl = precio - (atr * 2)
         
-        estado = "GOLDEN 💎" if precio > sma20 and 30 < rsi_val < 70 else ("BULL 🐂" if precio > sma20 else "BEAR 🐻")
+        # Lógica de Estado
+        if precio > sma20 and 30 < rsi_val < 70:
+            estado = "GOLDEN 💎"
+        elif precio > sma20:
+            estado = "BULL 🐂"
+        else:
+            estado = "BEAR 🐻"
 
         return {
             "Ticker": ticker,
@@ -43,21 +46,18 @@ def analizar_activo(ticker):
             "Stop Loss": round(sl, 2),
             "Estado": estado
         }
-    except Exception as e:
-        return None
+    except: return None
 
 if st.button('🚀 EJECUTAR ESCÁNER MAESTRO'):
-    with st.spinner('Obteniendo datos en tiempo real...'):
-        resultados = []
-        # Lo hacemos uno por uno para asegurar que no falle la conexión
-        for ticker in TODOS:
-            res = analizar_activo(ticker)
-            if res:
-                resultados.append(res)
+    with st.spinner('Analizando los 188 activos...'):
+        # Usamos procesamiento paralelo para que no tarde una eternidad
+        with ThreadPoolExecutor(max_workers=15) as executor:
+            resultados = list(executor.map(analizar_activo, TODOS))
         
-        if resultados:
-            df = pd.DataFrame(resultados)
-            st.success(f"Escaneo completado.")
+        df = pd.DataFrame([r for r in resultados if r is not None])
+        if not df.empty:
+            st.success(f"¡Escaneo completo! Se analizaron {len(df)} activos.")
+            # Ordenamos para que los GOLDEN aparezcan primero
             st.dataframe(df.sort_values("Estado", ascending=False), use_container_width=True)
         else:
-            st.error("Error de conexión con el mercado. Reintentá en unos segundos.")
+            st.error("Error al obtener datos. Reintentá en unos segundos.")
