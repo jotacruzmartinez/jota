@@ -3,10 +3,12 @@ import yfinance as yf
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Estrategia Golden - Radar", layout="wide")
+# --- 1. CONFIGURACIÓN VISUAL ---
+st.set_page_config(page_title="Mis Oportunidades de Inversión", layout="wide")
+st.title("💰 Mis Oportunidades de Inversión")
+st.write("Presioná el botón para escanear el mercado en tiempo real.")
 
-# --- TUS LISTADOS ACTUALIZADOS ---
+# --- 2. TUS LISTADOS (188 ACCIONES) ---
 cedears_usa = [
     "MMM", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AMZN", "AAPL", "BA", "BABA", "BBD", "BCS", "BHP", "BIDU",
     "BIIB", "BP", "BRK-B", "BSBR", "C", "CAT", "CHTR", "CL", "COST", "CRM", "CSCO", "CVS", "CVX", "DD", "DE",
@@ -32,55 +34,39 @@ activos_arg = [
 
 TODOS_LOS_TICKERS = cedears_usa + activos_arg
 
-# --- MOTOR DE DESCARGA RÁPIDA (CONCURRENTE) ---
-@st.cache_data(ttl=600)  # Mantiene los datos frescos cada 10 minutos
-def escanear_mercado(lista_tickers):
-    def procesar_activo(ticker):
-        try:
-            # Bajamos solo 2 meses de historia para que sea liviano
-            data = yf.download(ticker, period="2mo", interval="1d", progress=False)
-            if data.empty:
-                return None
-            
-            ultimo_precio = data['Close'].iloc[-1]
-            
-            # --- AQUÍ PODÉS AGREGAR TUS LÓGICAS DE RSI / ATR ---
-            # Ejemplo simple:
-            return {
-                "Ticker": ticker,
-                "Precio": round(float(ultimo_precio), 2),
-                "Mercado": "ARG" if ".BA" in ticker else "USA",
-                "Estado": "Análizado ✅"
-            }
-        except Exception:
-            return None
-
-    # Usamos 20 "trabajadores" en simultáneo para no perder tiempo
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        resultados = list(executor.map(procesar_activo, lista_tickers))
-    
-    # Filtramos los que dieron error y armamos la tabla
-    exitosos = [r for r in resultados if r is not None]
-    return pd.DataFrame(exitosos)
-
-# --- INTERFAZ ---
-st.title("💎 Estrategia Golden - Radar de Mercado")
-st.write(f"Total de activos a monitorear: **{len(TODOS_LOS_TICKERS)}**")
-
-if st.button('🚀 EJECUTAR ESCÁNER'):
-    with st.spinner('Analizando el tablero de juego...'):
-        df_final = escanear_mercado(TODOS_LOS_TICKERS)
+# --- 3. EL MOTOR (Aquí se procesan los datos) ---
+def procesar_un_solo_activo(ticker):
+    try:
+        # Descarga rápida de 2 meses
+        data = yf.download(ticker, period="2mo", interval="1d", progress=False)
+        if data.empty: return None
         
-        if not df_final.empty:
-            st.success(f"Escaneo completado. Se detectaron {len(df_final)} activos activos.")
-            
-            # Buscador simple
-            busqueda = st.text_input("Buscar Ticker específico:")
-            if busqueda:
-                df_final = df_final[df_final['Ticker'].str.contains(busqueda.upper())]
-            
-            st.table(df_final) # st.table es más estable para ver muchos datos
+        precio = data['Close'].iloc[-1]
+        
+        # ACA PODES SUMAR TUS CALCULOS MAS ADELANTE
+        return {
+            "Ticker": ticker,
+            "Precio": round(float(precio), 2),
+            "Estado": "Validado ✅"
+        }
+    except:
+        return None
+
+@st.cache_data(ttl=600)
+def ejecutar_analisis_maestro(lista):
+    # Esto usa 20 "trabajadores" a la vez para que no se trabe
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        resultados = list(executor.map(procesar_un_solo_activo, lista))
+    return [r for r in resultados if r is not None]
+
+# --- 4. LA ACCIÓN ---
+if st.button('🚀 Iniciar Escaneo Maestro'):
+    with st.spinner('Analizando los 188 activos...'):
+        datos_finales = ejecutar_analisis_maestro(TODOS_LOS_TICKERS)
+        
+        if datos_finales:
+            df = pd.DataFrame(datos_finales)
+            st.success(f"Se encontraron {len(df)} activos disponibles.")
+            st.dataframe(df, use_container_width=True)
         else:
-            st.error("No se pudieron obtener datos. Reintentá en unos segundos.")
-else:
-    st.info("Presioná el botón para obtener la validación de precios actual.")
+            st.error("No se pudo obtener información. Probá de nuevo.")
